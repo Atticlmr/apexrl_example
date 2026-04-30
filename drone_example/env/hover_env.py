@@ -218,9 +218,7 @@ class HoverEnv(VecEnv):
         self.base_ang_vel[:] = transform_by_quat(self.drone.get_ang(), inv_base_quat)
 
         reached_target = self._at_target()
-        self._resample_commands(reached_target)
 
-        time_outs = self.episode_length_buf > self.max_episode_length
         self.crash_condition = (
             (torch.abs(self.base_euler[:, 1]) > self.env_cfg["termination_if_pitch_greater_than"])
             | (torch.abs(self.base_euler[:, 0]) > self.env_cfg["termination_if_roll_greater_than"])
@@ -229,7 +227,9 @@ class HoverEnv(VecEnv):
             | (torch.abs(self.rel_pos[:, 2]) > self.env_cfg["termination_if_z_greater_than"])
             | (self.base_pos[:, 2] < self.env_cfg["termination_if_close_to_ground"])
         )
-        dones = time_outs | self.crash_condition
+        terminated = self.crash_condition
+        time_outs = (self.episode_length_buf > self.max_episode_length) & ~terminated
+        dones = time_outs | terminated
 
         self.rew_buf[:] = 0.0
         reward_components: dict[str, torch.Tensor] = {}
@@ -243,19 +243,28 @@ class HoverEnv(VecEnv):
         final_observation = TensorDict({"obs": self.obs_buf.clone()}, batch_size=[self.num_envs])
         self.extras = {
             "time_outs": time_outs,
-            "terminated": self.crash_condition,
+            "terminated": terminated,
             "truncated": time_outs,
             "final_observation": final_observation,
             "reward_components": reward_components,
             "log": {
                 "/drone/target_distance": torch.norm(self.rel_pos, dim=1).mean(),
                 "/drone/height": self.base_pos[:, 2].mean(),
-                "/drone/crash_rate": self.crash_condition.float().mean(),
+                "/drone/crash_rate": terminated.float().mean(),
+                "/drone/target_reached_rate": reached_target.numel() / self.num_envs,
             },
         }
 
         if dones.any():
             self.reset_idx(dones.nonzero(as_tuple=False).reshape((-1,)))
+        active_reached_target = reached_target[~dones[reached_target]]
+        if active_reached_target.numel() > 0:
+            self._resample_commands(active_reached_target)
+            self.rel_pos[active_reached_target] = self.commands[active_reached_target] - self.base_pos[active_reached_target]
+            self.last_rel_pos[active_reached_target] = (
+                self.commands[active_reached_target] - self.last_base_pos[active_reached_target]
+            )
+        if dones.any() or active_reached_target.numel() > 0:
             self._update_observation()
 
         self.last_actions[:] = self.actions[:]
@@ -293,7 +302,15 @@ class HoverEnv(VecEnv):
         )
 
     def _reward_target(self) -> torch.Tensor:
-        return torch.sum(torch.square(self.last_rel_pos), dim=1) - torch.sum(torch.square(self.rel_pos), dim=1)
+        last_dist = torch.norm(self.last_rel_pos, dim=1)
+        dist = torch.norm(self.rel_pos, dim=1)
+        progress = last_dist - dist
+        target_sigma = self.reward_cfg.get("target_sigma", 0.35)
+        progress_weight = self.reward_cfg.get("target_progress_weight", 4.0)
+        bonus = self.reward_cfg.get("target_bonus", 2.0)
+        proximity = torch.exp(-dist / target_sigma)
+        target_bonus = (dist < self.env_cfg["at_target_threshold"]).float() * bonus
+        return progress_weight * progress + proximity + target_bonus
 
     def _reward_smooth(self) -> torch.Tensor:
         return torch.sum(torch.square(self.actions - self.last_actions), dim=1)
@@ -310,4 +327,3 @@ class HoverEnv(VecEnv):
         crash_rew = torch.zeros((self.num_envs,), device=gs.device, dtype=gs.tc_float)
         crash_rew[self.crash_condition] = 1.0
         return crash_rew
-

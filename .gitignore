@@ -39,6 +39,8 @@ checkpoints/
 *.mp4
 *.avi
 *.mov
+!go2_example/go2.mp4
+!drone_example/crayflie.mp4
 
 # Local editor / OS files
 .vscode/

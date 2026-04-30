@@ -33,6 +33,8 @@ python -c "import apexrl, genesis; print(apexrl.__file__); print(genesis.__file_
 
 ## Go2 Locomotion
 
+Demo video: [go2.mp4](./go2_example/go2.mp4)
+
 Train:
 
 ```bash
@@ -48,7 +50,15 @@ cd /RL_ws/apexrl_example/go2_example
 python play.py -e go2-walking-apexrl --checkpoint checkpoint_final.pt --backend cpu
 ```
 
+Record a video:
+
+```bash
+python play.py -e go2-walking-apexrl --checkpoint checkpoint_final.pt --backend cpu --record
+```
+
 ## Drone Hovering
+
+Demo video: [crayflie.mp4](./drone_example/crayflie.mp4)
 
 Train:
 
@@ -81,4 +91,3 @@ python play.py -e drone-hovering-apexrl --checkpoint checkpoint_final.pt --backe
 ## Outputs
 
 Each example writes logs and checkpoints under its own `logs/<experiment-name>/` directory. These outputs are ignored by git.
-

@@ -35,6 +35,9 @@ def get_drone_cfgs() -> tuple[dict, dict, dict, dict]:
     }
     reward_cfg = {
         "yaw_lambda": -10.0,
+        "target_sigma": 0.35,
+        "target_progress_weight": 10.0,
+        "target_bonus": 2.0,
         "reward_scales": {
             "target": 10.0,
             "smooth": -1e-4,
@@ -83,4 +86,3 @@ def get_ppo_cfg(num_envs: int, max_iterations: int | None = None) -> PPOConfig:
         log_interval=10,
         logger_backend="tensorboard",
     )
-

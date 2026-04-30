@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lin-vel-x", type=float, default=None)
     parser.add_argument("--lin-vel-y", type=float, default=None)
     parser.add_argument("--ang-vel", type=float, default=None)
+    parser.add_argument("--record", action="store_true")
     parser.add_argument("--no-viewer", action="store_true")
     return parser.parse_args()
 
@@ -54,6 +55,8 @@ def main() -> None:
     command_cfg = cfgs["command_cfg"]
     ppo_cfg = cfgs["ppo_cfg"]
     reward_cfg = {**reward_cfg, "reward_scales": {}}
+    env_cfg["visualize_camera"] = args.record
+    env_cfg["max_visualize_FPS"] = 60
 
     if args.lin_vel_x is not None:
         command_cfg["lin_vel_x_range"] = [args.lin_vel_x, args.lin_vel_x]
@@ -86,13 +89,23 @@ def main() -> None:
     runner.agent.actor.eval()
 
     obs = env.reset()
-    step = 0
+    max_steps = args.max_steps
+    if args.record and max_steps <= 0:
+        max_steps = int(env_cfg["episode_length_s"] * env_cfg["max_visualize_FPS"])
+
     try:
         with torch.no_grad():
-            while args.max_steps <= 0 or step < args.max_steps:
+            if args.record and env.cam is not None:
+                env.cam.start_recording()
+            step = 0
+            while max_steps <= 0 or step < max_steps:
                 actions, _ = runner.agent.actor.act(obs["obs"], deterministic=True)
                 obs, _, _, _ = env.step(actions)
+                if args.record and env.cam is not None:
+                    env.cam.render()
                 step += 1
+            if args.record and env.cam is not None:
+                env.cam.stop_recording(save_to_filename="video.mp4", fps=env_cfg["max_visualize_FPS"])
     finally:
         runner.close()
 

@@ -72,9 +72,9 @@ def get_go2_cfgs() -> tuple[dict, dict, dict, dict]:
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],
-        "lin_vel_y_range": [0.0, 0.0],
-        "ang_vel_range": [0.0, 0.0],
+        "lin_vel_x_range": [-0.5, 1.0],
+        "lin_vel_y_range": [0.3, 0.3],
+        "ang_vel_range": [-1.0, 1.0],
     }
     return deepcopy(env_cfg), deepcopy(obs_cfg), deepcopy(reward_cfg), deepcopy(command_cfg)
 
