@@ -1,0 +1,49 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+.env/
+.venv*/
+venv*/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type / lint caches
+.mypy_cache/
+.ruff_cache/
+.pyre/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs, checkpoints, and generated media
+logs/
+runs/
+checkpoints/
+*.pt
+*.pth
+*.onnx
+*.mp4
+*.avi
+*.mov
+
+# Local editor / OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Local cache hints
+.cache/
