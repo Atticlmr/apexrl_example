@@ -72,6 +72,22 @@ Record a video:
 python play.py -e go2-walking-apexrl --checkpoint checkpoint_final.pt --backend cpu --record
 ```
 
+Train with SAC:
+
+```bash
+cd /RL_ws/apexrl_example/go2_example
+python train_sac.py --backend gpu -B 256 --gradient-steps 16 --total-timesteps 50000000 --termination-roll 45 --termination-pitch 45 -e go2-walking-sac-relaxed
+```
+
+SAC checkpoints do not save the replay buffer by default. Add `--save-replay-buffer` only if you explicitly need replay state in the `.pt` files.
+
+Play SAC with Genesis viewer enabled:
+
+```bash
+cd /RL_ws/apexrl_example/go2_example
+python play_sac.py -e go2-walking-sac-relaxed --checkpoint checkpoint_final.pt --backend cpu
+```
+
 ## Drone Hovering
 
 Demo video: [crayflie.mp4](./drone_example/crayflie.mp4)
@@ -110,7 +126,7 @@ Train:
 
 ```bash
 cd /RL_ws/apexrl_example/breakout_dqn_example
-python train.py --device cuda -B 8 --total-timesteps 10000000 --buffer-size 500000 -e breakout-dqn-apexrl
+python train.py --device cuda -B 8 --total-timesteps 50000000 --buffer-size 500000 -e breakout-dqn-apexrl-v2
 ```
 
 Quick CPU smoke test:
@@ -124,14 +140,14 @@ Play:
 
 ```bash
 cd /RL_ws/apexrl_example/breakout_dqn_example
-python play.py -e breakout-dqn-apexrl --checkpoint checkpoint_final.pt --device cpu
+python play.py -e breakout-dqn-apexrl-v2 --checkpoint checkpoint_final.pt --device cpu
 ```
 
 Record a video:
 
 ```bash
 cd /RL_ws/apexrl_example/breakout_dqn_example
-python play.py -e breakout-dqn-apexrl --checkpoint checkpoint_final.pt --device cpu --record --no-render
+python play.py -e breakout-dqn-apexrl-v2 --checkpoint checkpoint_final.pt --device cpu --record --no-render
 ```
 
 Breakout is a pixel-based Atari task, so it usually needs far more than a few thousand steps before the policy looks good. Start with the smoke test only to verify the pipeline.
