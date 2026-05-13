@@ -41,6 +41,8 @@ checkpoints/
 *.mov
 !go2_example/go2.mp4
 !drone_example/crayflie.mp4
+!breakout_dqn_example/videos/
+!breakout_dqn_example/videos/dqn_dinal.mp4
 
 # Local editor / OS files
 .vscode/
