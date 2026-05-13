@@ -19,13 +19,13 @@ from genesis.utils.geom import (
 )
 
 
-def gs_rand(lower: torch.Tensor, upper: torch.Tensor, batch_shape: tuple[int, ...]) -> torch.Tensor:
+def gs_rand(
+    lower: torch.Tensor, upper: torch.Tensor, batch_shape: tuple[int, ...]
+) -> torch.Tensor:
     assert lower.shape == upper.shape
-    return (
-        (upper - lower)
-        * torch.rand(size=(*batch_shape, *lower.shape), dtype=gs.tc_float, device=gs.device)
-        + lower
-    )
+    return (upper - lower) * torch.rand(
+        size=(*batch_shape, *lower.shape), dtype=gs.tc_float, device=gs.device
+    ) + lower
 
 
 class Go2Env(VecEnv):
@@ -123,35 +123,73 @@ class Go2Env(VecEnv):
         self.scene.build(n_envs=num_envs)
 
         self.motors_dof_idx = torch.tensor(
-            [self.robot.get_joint(name).dof_start for name in self.env_cfg["joint_names"]],
+            [
+                self.robot.get_joint(name).dof_start
+                for name in self.env_cfg["joint_names"]
+            ],
             dtype=gs.tc_int,
             device=gs.device,
         )
         self.actions_dof_idx = torch.argsort(self.motors_dof_idx)
-        self.robot.set_dofs_kp([self.env_cfg["kp"]] * self.num_actions, self.motors_dof_idx)
-        self.robot.set_dofs_kv([self.env_cfg["kd"]] * self.num_actions, self.motors_dof_idx)
+        self.robot.set_dofs_kp(
+            [self.env_cfg["kp"]] * self.num_actions, self.motors_dof_idx
+        )
+        self.robot.set_dofs_kv(
+            [self.env_cfg["kd"]] * self.num_actions, self.motors_dof_idx
+        )
 
-        self.global_gravity = torch.tensor([0.0, 0.0, -1.0], dtype=gs.tc_float, device=gs.device)
-        self.init_base_pos = torch.tensor(self.env_cfg["base_init_pos"], dtype=gs.tc_float, device=gs.device)
-        self.init_base_quat = torch.tensor(self.env_cfg["base_init_quat"], dtype=gs.tc_float, device=gs.device)
+        self.global_gravity = torch.tensor(
+            [0.0, 0.0, -1.0], dtype=gs.tc_float, device=gs.device
+        )
+        self.init_base_pos = torch.tensor(
+            self.env_cfg["base_init_pos"], dtype=gs.tc_float, device=gs.device
+        )
+        self.init_base_quat = torch.tensor(
+            self.env_cfg["base_init_quat"], dtype=gs.tc_float, device=gs.device
+        )
         self.inv_base_init_quat = inv_quat(self.init_base_quat)
         self.init_dof_pos = torch.tensor(
-            [self.env_cfg["default_joint_angles"][joint.name] for joint in self.robot.joints[1:]],
+            [
+                self.env_cfg["default_joint_angles"][joint.name]
+                for joint in self.robot.joints[1:]
+            ],
             dtype=gs.tc_float,
             device=gs.device,
         )
-        self.init_qpos = torch.concatenate((self.init_base_pos, self.init_base_quat, self.init_dof_pos))
-        self.init_projected_gravity = transform_by_quat(self.global_gravity, self.inv_base_init_quat)
+        self.init_qpos = torch.concatenate(
+            (self.init_base_pos, self.init_base_quat, self.init_dof_pos)
+        )
+        self.init_projected_gravity = transform_by_quat(
+            self.global_gravity, self.inv_base_init_quat
+        )
 
-        self.base_lin_vel = torch.empty((self.num_envs, 3), dtype=gs.tc_float, device=gs.device)
-        self.base_ang_vel = torch.empty((self.num_envs, 3), dtype=gs.tc_float, device=gs.device)
-        self.projected_gravity = torch.empty((self.num_envs, 3), dtype=gs.tc_float, device=gs.device)
-        self.rew_buf = torch.empty((self.num_envs,), dtype=gs.tc_float, device=gs.device)
-        self.reset_buf = torch.ones((self.num_envs,), dtype=gs.tc_bool, device=gs.device)
-        self.episode_length_buf = torch.empty((self.num_envs,), dtype=gs.tc_int, device=gs.device)
-        self.commands = torch.empty((self.num_envs, self.num_commands), dtype=gs.tc_float, device=gs.device)
+        self.base_lin_vel = torch.empty(
+            (self.num_envs, 3), dtype=gs.tc_float, device=gs.device
+        )
+        self.base_ang_vel = torch.empty(
+            (self.num_envs, 3), dtype=gs.tc_float, device=gs.device
+        )
+        self.projected_gravity = torch.empty(
+            (self.num_envs, 3), dtype=gs.tc_float, device=gs.device
+        )
+        self.rew_buf = torch.empty(
+            (self.num_envs,), dtype=gs.tc_float, device=gs.device
+        )
+        self.reset_buf = torch.ones(
+            (self.num_envs,), dtype=gs.tc_bool, device=gs.device
+        )
+        self.episode_length_buf = torch.empty(
+            (self.num_envs,), dtype=gs.tc_int, device=gs.device
+        )
+        self.commands = torch.empty(
+            (self.num_envs, self.num_commands), dtype=gs.tc_float, device=gs.device
+        )
         self.commands_scale = torch.tensor(
-            [self.obs_scales["lin_vel"], self.obs_scales["lin_vel"], self.obs_scales["ang_vel"]],
+            [
+                self.obs_scales["lin_vel"],
+                self.obs_scales["lin_vel"],
+                self.obs_scales["ang_vel"],
+            ],
             dtype=gs.tc_float,
             device=gs.device,
         )
@@ -163,20 +201,33 @@ class Go2Env(VecEnv):
                 self.command_cfg["ang_vel_range"],
             )
         )
-        self.actions = torch.zeros((self.num_envs, self.num_actions), dtype=gs.tc_float, device=gs.device)
+        self.actions = torch.zeros(
+            (self.num_envs, self.num_actions), dtype=gs.tc_float, device=gs.device
+        )
         self.last_actions = torch.zeros_like(self.actions)
         self.dof_pos = torch.empty_like(self.actions)
         self.dof_vel = torch.empty_like(self.actions)
         self.last_dof_vel = torch.zeros_like(self.actions)
-        self.base_pos = torch.empty((self.num_envs, 3), dtype=gs.tc_float, device=gs.device)
-        self.base_quat = torch.empty((self.num_envs, 4), dtype=gs.tc_float, device=gs.device)
-        self.base_euler = torch.empty((self.num_envs, 3), dtype=gs.tc_float, device=gs.device)
+        self.base_pos = torch.empty(
+            (self.num_envs, 3), dtype=gs.tc_float, device=gs.device
+        )
+        self.base_quat = torch.empty(
+            (self.num_envs, 4), dtype=gs.tc_float, device=gs.device
+        )
+        self.base_euler = torch.empty(
+            (self.num_envs, 3), dtype=gs.tc_float, device=gs.device
+        )
         self.default_dof_pos = torch.tensor(
-            [self.env_cfg["default_joint_angles"][name] for name in self.env_cfg["joint_names"]],
+            [
+                self.env_cfg["default_joint_angles"][name]
+                for name in self.env_cfg["joint_names"]
+            ],
             dtype=gs.tc_float,
             device=gs.device,
         )
-        self.obs_buf = torch.zeros((self.num_envs, self.num_obs), dtype=gs.tc_float, device=gs.device)
+        self.obs_buf = torch.zeros(
+            (self.num_envs, self.num_obs), dtype=gs.tc_float, device=gs.device
+        )
         self.privileged_obs_buf = torch.zeros(
             (self.num_envs, self.num_privileged_obs),
             dtype=gs.tc_float,
@@ -220,12 +271,22 @@ class Go2Env(VecEnv):
         self._update_privileged_observation()
         return self.get_observations()
 
-    def step(self, actions: torch.Tensor) -> tuple[TensorDict, torch.Tensor, torch.Tensor, dict[str, Any]]:
+    def step(
+        self, actions: torch.Tensor
+    ) -> tuple[TensorDict, torch.Tensor, torch.Tensor, dict[str, Any]]:
         actions = actions.to(device=gs.device, dtype=gs.tc_float)
-        self.actions = torch.clip(actions, -self.env_cfg["clip_actions"], self.env_cfg["clip_actions"])
-        exec_actions = self.last_actions if self.simulate_action_latency else self.actions
-        target_dof_pos = exec_actions * self.env_cfg["action_scale"] + self.default_dof_pos
-        self.robot.control_dofs_position(target_dof_pos[:, self.actions_dof_idx], slice(6, 18))
+        self.actions = torch.clip(
+            actions, -self.env_cfg["clip_actions"], self.env_cfg["clip_actions"]
+        )
+        exec_actions = (
+            self.last_actions if self.simulate_action_latency else self.actions
+        )
+        target_dof_pos = (
+            exec_actions * self.env_cfg["action_scale"] + self.default_dof_pos
+        )
+        self.robot.control_dofs_position(
+            target_dof_pos[:, self.actions_dof_idx], slice(6, 18)
+        )
         self.scene.step()
 
         self.episode_length_buf += 1
@@ -240,12 +301,22 @@ class Go2Env(VecEnv):
             reward_components[name] = rew.detach()
 
         self._resample_commands(
-            self.episode_length_buf % int(self.env_cfg["resampling_time_s"] / self.dt) == 0
+            self.episode_length_buf % int(self.env_cfg["resampling_time_s"] / self.dt)
+            == 0
         )
 
         time_outs = self.episode_length_buf > self.max_episode_length
-        terminated = torch.abs(self.base_euler[:, 1]) > self.env_cfg["termination_if_pitch_greater_than"]
-        terminated |= torch.abs(self.base_euler[:, 0]) > self.env_cfg["termination_if_roll_greater_than"]
+        terminated = (
+            torch.abs(self.base_euler[:, 1])
+            > self.env_cfg["termination_if_pitch_greater_than"]
+        )
+        terminated |= (
+            torch.abs(self.base_euler[:, 0])
+            > self.env_cfg["termination_if_roll_greater_than"]
+        )
+        terminated |= (
+            self.base_pos[:, 2] < self.env_cfg["termination_if_base_height_less_than"]
+        )
         terminated |= self.scene.rigid_solver.get_error_envs_mask()
         dones = time_outs | terminated
 
@@ -309,7 +380,9 @@ class Go2Env(VecEnv):
             torch.where(envs_idx[:, None], commands, self.commands, out=self.commands)
 
     def _reset_idx(self, envs_idx: torch.Tensor | None = None) -> None:
-        self.robot.set_qpos(self.init_qpos, envs_idx=envs_idx, zero_velocity=True, skip_forward=True)
+        self.robot.set_qpos(
+            self.init_qpos, envs_idx=envs_idx, zero_velocity=True, skip_forward=True
+        )
 
         if envs_idx is None:
             self.base_pos.copy_(self.init_base_pos)
@@ -325,15 +398,24 @@ class Go2Env(VecEnv):
             self.episode_length_buf.zero_()
             self.reset_buf.fill_(True)
         else:
-            torch.where(envs_idx[:, None], self.init_base_pos, self.base_pos, out=self.base_pos)
-            torch.where(envs_idx[:, None], self.init_base_quat, self.base_quat, out=self.base_quat)
+            torch.where(
+                envs_idx[:, None], self.init_base_pos, self.base_pos, out=self.base_pos
+            )
+            torch.where(
+                envs_idx[:, None],
+                self.init_base_quat,
+                self.base_quat,
+                out=self.base_quat,
+            )
             torch.where(
                 envs_idx[:, None],
                 self.init_projected_gravity,
                 self.projected_gravity,
                 out=self.projected_gravity,
             )
-            torch.where(envs_idx[:, None], self.init_dof_pos, self.dof_pos, out=self.dof_pos)
+            torch.where(
+                envs_idx[:, None], self.init_dof_pos, self.dof_pos, out=self.dof_pos
+            )
             self.base_lin_vel.masked_fill_(envs_idx[:, None], 0.0)
             self.base_ang_vel.masked_fill_(envs_idx[:, None], 0.0)
             self.dof_vel.masked_fill_(envs_idx[:, None], 0.0)
@@ -352,7 +434,9 @@ class Go2Env(VecEnv):
             else:
                 mean = torch.where(n_envs > 0, value[envs_idx].sum() / n_envs, 0.0)
                 value.masked_fill_(envs_idx, 0.0)
-            self.extras["episode"]["rew_" + key] = mean / self.env_cfg["episode_length_s"]
+            self.extras["episode"]["rew_" + key] = (
+                mean / self.env_cfg["episode_length_s"]
+            )
 
         self._resample_commands(envs_idx)
 
@@ -381,7 +465,9 @@ class Go2Env(VecEnv):
         )
 
     def _reward_tracking_lin_vel(self) -> torch.Tensor:
-        lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
+        lin_vel_error = torch.sum(
+            torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1
+        )
         return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"])
 
     def _reward_tracking_ang_vel(self) -> torch.Tensor:

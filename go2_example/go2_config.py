@@ -42,6 +42,7 @@ def get_go2_cfgs() -> tuple[dict, dict, dict, dict]:
         "kd": 0.5,
         "termination_if_roll_greater_than": 10.0,
         "termination_if_pitch_greater_than": 10.0,
+        "termination_if_base_height_less_than": 0.2,
         "base_init_pos": [0.0, 0.0, 0.42],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
@@ -76,7 +77,12 @@ def get_go2_cfgs() -> tuple[dict, dict, dict, dict]:
         "lin_vel_y_range": [0.3, 0.3],
         "ang_vel_range": [-1.0, 1.0],
     }
-    return deepcopy(env_cfg), deepcopy(obs_cfg), deepcopy(reward_cfg), deepcopy(command_cfg)
+    return (
+        deepcopy(env_cfg),
+        deepcopy(obs_cfg),
+        deepcopy(reward_cfg),
+        deepcopy(command_cfg),
+    )
 
 
 def get_ppo_cfg(num_envs: int, max_iterations: int | None = None) -> PPOConfig:
@@ -108,5 +114,12 @@ def get_ppo_cfg(num_envs: int, max_iterations: int | None = None) -> PPOConfig:
         normalize_advantages=True,
         save_interval=100,
         log_interval=10,
+        extra_log_keys=[
+            "log",
+            "time_outs",
+            "terminated",
+            "truncated",
+            "reward_components",
+        ],
         logger_backend="tensorboard",
     )

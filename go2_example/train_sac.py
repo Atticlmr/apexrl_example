@@ -33,6 +33,7 @@ def apply_sac_task_overrides(
     """Tune the Go2 task defaults for off-policy SAC training."""
     env_cfg["termination_if_roll_greater_than"] = args.termination_roll
     env_cfg["termination_if_pitch_greater_than"] = args.termination_pitch
+    env_cfg["termination_if_base_height_less_than"] = args.termination_base_height
 
     if args.command_mode == "forward":
         command_cfg["lin_vel_x_range"] = [0.3, 1.0]
@@ -46,7 +47,7 @@ def apply_sac_task_overrides(
                 "tracking_lin_vel": 5.0,
                 "tracking_ang_vel": 1.0,
                 "lin_vel_z": -0.5,
-                "base_height": -20.0,
+                "base_height": -40.0,
                 "action_rate": -0.001,
                 "similar_to_default": -0.02,
             }
@@ -80,6 +81,7 @@ def build_sac_cfg(args: argparse.Namespace) -> SACConfig:
         log_interval=args.log_interval,
         save_interval=args.save_interval,
         save_replay_buffer=args.save_replay_buffer,
+        extra_log_keys=args.extra_log_keys,
         logger_backend=args.logger_backend,
         device="auto",
     )
@@ -97,14 +99,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--termination-roll",
         type=float,
-        default=30.0,
+        default=20.0,
         help="Roll angle termination threshold in degrees for SAC training.",
     )
     parser.add_argument(
         "--termination-pitch",
         type=float,
-        default=30.0,
+        default=20.0,
         help="Pitch angle termination threshold in degrees for SAC training.",
+    )
+    parser.add_argument(
+        "--termination-base-height",
+        type=float,
+        default=0.2,
+        help="Base height termination threshold in meters for SAC training.",
     )
 
     parser.add_argument("--buffer-size", type=int, default=1_000_000)
@@ -119,7 +127,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--actor-lr", type=float, default=3e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--alpha-lr", type=float, default=3e-4)
-    parser.add_argument("--optimizer", choices=["adam", "adamw", "muon"], default="adam")
+    parser.add_argument(
+        "--optimizer", choices=["adam", "adamw", "muon"], default="adam"
+    )
     parser.add_argument("--max-grad-norm", type=float, default=10.0)
 
     parser.add_argument("--fixed-alpha", action="store_true")
@@ -164,6 +174,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Include the SAC replay buffer in checkpoints. This can make .pt files very large.",
     )
+    parser.add_argument(
+        "--extra-log-keys",
+        nargs="*",
+        default=["log", "time_outs", "terminated", "truncated", "reward_components"],
+        help="Extras top-level keys to recursively log under extra/*. Use no values to disable.",
+    )
     parser.add_argument("--logger-backend", type=str, default="tensorboard")
     return parser.parse_args()
 
@@ -199,7 +215,9 @@ def main() -> None:
             f,
         )
 
-    device = torch.device("cuda" if args.backend == "gpu" and torch.cuda.is_available() else "cpu")
+    device = torch.device(
+        "cuda" if args.backend == "gpu" and torch.cuda.is_available() else "cpu"
+    )
     env = Go2Env(
         num_envs=args.num_envs,
         env_cfg=env_cfg,
