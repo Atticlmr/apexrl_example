@@ -49,7 +49,7 @@ def apply_sac_task_overrides(
                 "lin_vel_z": -0.5,
                 "base_height": -40.0,
                 "action_rate": -0.001,
-                "similar_to_default": -0.02,
+                "similar_to_default": -0.02, # -0.05
             }
         )
 
@@ -89,9 +89,9 @@ def build_sac_cfg(args: argparse.Namespace) -> SACConfig:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp-name", type=str, default="go2-walking-sac-apexrl")
-    parser.add_argument("-B", "--num-envs", type=int, default=256)
-    parser.add_argument("--total-timesteps", type=int, default=50_000_000)
+    parser.add_argument("-e", "--exp-name", type=str, default="go2-walking-sac-4096")
+    parser.add_argument("-B", "--num-envs", type=int, default=4096)
+    parser.add_argument("--total-timesteps", type=int, default=100_000_000)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--backend", choices=["gpu", "cpu"], default="gpu")
     parser.add_argument("--log-root", type=Path, default=Path("logs"))
@@ -99,13 +99,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--termination-roll",
         type=float,
-        default=20.0,
+        default=10.0,
         help="Roll angle termination threshold in degrees for SAC training.",
     )
     parser.add_argument(
         "--termination-pitch",
         type=float,
-        default=20.0,
+        default=10.0,
         help="Pitch angle termination threshold in degrees for SAC training.",
     )
     parser.add_argument(
@@ -115,11 +115,11 @@ def parse_args() -> argparse.Namespace:
         help="Base height termination threshold in meters for SAC training.",
     )
 
-    parser.add_argument("--buffer-size", type=int, default=1_000_000)
-    parser.add_argument("--batch-size", type=int, default=512)
-    parser.add_argument("--learning-starts", type=int, default=50_000)
+    parser.add_argument("--buffer-size", type=int, default=2_000_000)
+    parser.add_argument("--batch-size", type=int, default=2048)
+    parser.add_argument("--learning-starts", type=int, default=200_000)
     parser.add_argument("--train-freq", type=int, default=1)
-    parser.add_argument("--gradient-steps", type=int, default=16)
+    parser.add_argument("--gradient-steps", type=int, default=64)
     parser.add_argument("--target-update-interval", type=int, default=1)
 
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -167,8 +167,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--layer-norm", action="store_true")
 
-    parser.add_argument("--log-interval", type=int, default=50_000)
-    parser.add_argument("--save-interval", type=int, default=1_000_000)
+    parser.add_argument("--log-interval", type=int, default=200_000)
+    parser.add_argument("--save-interval", type=int, default=2_000_000)
     parser.add_argument(
         "--save-replay-buffer",
         action="store_true",

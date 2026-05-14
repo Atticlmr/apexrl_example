@@ -50,6 +50,7 @@ class Go2Env(VecEnv):
         self.obs_cfg = obs_cfg
         self.reward_cfg = reward_cfg
         self.command_cfg = command_cfg
+        self.env_cfg.setdefault("termination_if_base_height_less_than", 0.2)
         self.num_commands = command_cfg["num_commands"]
         self.device = gs.device
         self.dt = 0.02
