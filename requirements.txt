@@ -1,3 +1,5 @@
 gymnasium[atari,accept-rom-license]
 ale-py
 genesis-world
+pettingzoo
+mpe2

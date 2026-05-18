@@ -5,9 +5,11 @@ This repository contains ApexRL PPO examples migrated from Genesis demos:
 - `go2_example`: Unitree Go2 locomotion.
 - `drone_example`: Crazyflie drone hovering.
 - `breakout_dqn_example`: Atari Breakout DQN.
+- `mpe_mappo_example`: Batched MPE Simple Spread MAPPO.
 
 The Genesis examples use ApexRL's `VecEnv` interface and custom `ContinuousActor` / `Critic` networks.
 The Breakout example uses ApexRL's DQN with a custom CNN Q-network.
+The MPE example uses ApexRL's multi-agent `MultiAgentVecEnv` and a torch-vectorized Simple Spread environment, so large parallel batches such as 4096 envs do not create thousands of Python PettingZoo env objects.
 
 ## Install
 
@@ -15,6 +17,7 @@ Create or activate a Python environment first. From the parent workspace used he
 
 ```bash
 cd /RL_ws
+uv venv .venv
 source .venv/bin/activate
 ```
 
@@ -37,13 +40,13 @@ For the Atari Breakout example, install Gymnasium's Atari dependencies:
 
 ```bash
 cd /RL_ws/apexrl_example
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 If your setup still cannot find the Atari ROMs, install them with:
 
 ```bash
-pip install autorom
+uv pip install autorom
 AutoROM --accept-license
 ```
 
@@ -76,7 +79,7 @@ Train with SAC:
 
 ```bash
 cd /RL_ws/apexrl_example/go2_example
-python train_sac.py --backend gpu -B 256 --gradient-steps 16 --total-timesteps 50000000 --termination-roll 45 --termination-pitch 45 -e go2-walking-sac-relaxed
+python train_sac.py --backend gpu -e go2-walking-sac
 ```
 
 SAC checkpoints do not save the replay buffer by default. Add `--save-replay-buffer` only if you explicitly need replay state in the `.pt` files.
@@ -85,7 +88,7 @@ Play SAC with Genesis viewer enabled:
 
 ```bash
 cd /RL_ws/apexrl_example/go2_example
-python play_sac.py -e go2-walking-sac-relaxed --checkpoint checkpoint_final.pt --backend cpu
+python play_sac.py -e go2-walking-sac --checkpoint checkpoint_final.pt --backend cpu
 ```
 
 ## Drone Hovering
@@ -151,6 +154,31 @@ python play.py -e breakout-dqn-apexrl-v2 --checkpoint checkpoint_final.pt --devi
 ```
 
 Breakout is a pixel-based Atari task, so it usually needs far more than a few thousand steps before the policy looks good. Start with the smoke test only to verify the pipeline.
+
+## MPE Simple Spread MAPPO
+
+Train:
+
+```bash
+cd /RL_ws/apexrl_example/mpe_mappo_example
+python train.py --device cuda -B 4096 --num-steps 16 --num-epochs 4 --minibatch-size 16384 --total-timesteps 100000000 --save-interval 20 -e mpe-simple-spread-mappo-4096
+```
+
+With 4096 parallel environments and 3 agents, this collects 196,608 agent-steps per MAPPO iteration.
+
+Quick CPU smoke test:
+
+```bash
+cd /RL_ws/apexrl_example/mpe_mappo_example
+python train.py --device cpu -B 1 --total-timesteps 384 --num-steps 32 --minibatch-size 32 -e smoke-mpe
+```
+
+Play:
+
+```bash
+cd /RL_ws/apexrl_example/mpe_mappo_example
+python play.py -e mpe-simple-spread-mappo-4096 --checkpoint checkpoint_final.pt --device cpu
+```
 
 ## Outputs
 
